@@ -1,39 +1,51 @@
 from bs4 import BeautifulSoup
+import streamlit as st
 import requests
 import pandas as pd
-from header import header_list
-import streamlit as st
-import time
 import numpy as np
 
 
-class Nba_stats:
+class NbaStats:
     def __init__(self):
-        url = "https://stats.nba.com/stats/leaguedashplayerstats?College=&Conference=&Country=&DateFrom=&DateTo" \
-              "=&Division=&DraftPick=&DraftYear=&GameScope=&GameSegment=&Height=&LastNGames=0&LeagueID=00&Location" \
-              "=&MeasureType=Base&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=PerGame&Period=0" \
-              "&PlayerExperience=&PlayerPosition=&PlusMinus=N&Rank=N&Season=2022-23&SeasonSegment=&SeasonType=Regular" \
-              "%20Season&ShotClockRange=&StarterBench=&TeamID=0&VsConference=&VsDivision=&Weight= "
+        url = "https://www.nba.com/stats/players"
+        response = requests.get(url)
+        self.soup = BeautifulSoup(response.content, "html.parser")
 
-        headers = {
-            'Connection': 'keep-alive',
-            'Accept': 'application/json, text/plain, */*',
-            'x-nba-stats-token': 'true',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36',
-            'x-nba-stats-origin': 'stats',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'cors',
-            'Referer': 'https://stats.nba.com/',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'en-US,en;q=0.9',
-        }
-        self.request = requests.get(url, headers=headers).json()
+    def get_title(self):
+        header_list = []
+        card_container = self.soup.find("div", {
+            "class": "MaxWidthContainer_mwc__ID5AG LeaderBoard_leaderBoardContainer__2m0HJ"})
+        for card in card_container:
+            title = card.find("h2", {"class": "LeaderBoardCard_lbcTitleLink__MXurG"})
+            if title is None:
+                continue
+            else:
+                header_list.append(title.string)
+        for card in card_container:
+            title2 = card.find("h2", {"class": "LeaderBoardCard_lbcTitle___WI9J"})
+            if title2 is None:
+                continue
+            else:
+                header_list.append(title2.string)
 
-    def player_stats(self):
-        player_stats = self.request["resultSets"][0]["rowSet"]
-        data = pd.DataFrame(player_stats, columns=header_list)
-        return data
+        return header_list
+
+    def get_player_stats(self):
+        player_stats = []
+        card_container = self.soup.find("div", {
+            "class": "MaxWidthContainer_mwc__ID5AG LeaderBoard_leaderBoardContainer__2m0HJ"})
+        for cards in card_container:
+            table_body = cards.find("tbody")
+            for stats in table_body:
+                player_name = stats.find("a", {
+                    "class": "Anchor_anchor__cSc3P LeaderBoardPlayerCard_lbpcTableLink__MDNgL"}).string
+                player_team = stats.find("span", {"class": "LeaderBoardPlayerCard_lbpcTeamAbbr__fGlx3"}).string
+                player_stat = stats.find("td", {"class": "text-right lg:text-sm xl:text-base"}).string
+                array = [player_name,player_team,player_stat]
+                player_stats.append(array)
+        return player_stats
 
 
-nba = Nba_stats()
-print(nba.player_stats())
+# nba = NbaStats()
+# df = pd.DataFrame(nba.get_player_stats(), columns=nba.get_title())
+# st.write(df)
